@@ -146,7 +146,47 @@ ${text}`;
     return valid;
   }
 
-  return { generateFlashcards };
+  /**
+   * Asks the AI to explain a flashcard the user got wrong.
+   */
+  async function explainCard(domanda, risposta, apiKey, model) {
+    if (!apiKey) throw new Error('API key mancante. Vai nelle impostazioni per inserirla.');
+
+    const prompt =
+      `L'utente stava studiando e non ricordava questa flashcard. ` +
+      `Domanda: ${domanda}. Risposta corretta: ${risposta}. ` +
+      `Spiega il concetto in modo semplice e chiaro, in massimo 4-5 righe, ` +
+      `come se lo spiegassi a uno studente. Rispondi nella stessa lingua della domanda.`;
+
+    let response;
+    try {
+      response = await fetch(ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: model || 'llama-3.3-70b-versatile',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.5,
+          max_tokens: 512,
+        }),
+      });
+    } catch {
+      throw new Error('Errore di rete. Controlla la connessione.');
+    }
+
+    if (!response.ok) {
+      if (response.status === 429) throw new Error('Limite di richieste raggiunto. Riprova tra qualche secondo.');
+      throw new Error(`Errore API (${response.status})`);
+    }
+
+    const data = await response.json();
+    return data?.choices?.[0]?.message?.content?.trim() || 'Nessuna spiegazione disponibile.';
+  }
+
+  return { generateFlashcards, explainCard };
 })();
 
 window.GroqApi = GroqApi;

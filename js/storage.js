@@ -183,6 +183,44 @@ const Storage = (() => {
     return { dueCount, masteredCount };
   }
 
+  // ===== Session History =====
+  const SESSION_KEY = 'bishcard_sessions';
+  const MAX_SESSIONS_PER_DECK = 50;
+
+  function getSessionStore() {
+    try { return JSON.parse(localStorage.getItem(SESSION_KEY)) || {}; } catch { return {}; }
+  }
+
+  function saveSessionStore(data) {
+    localStorage.setItem(SESSION_KEY, JSON.stringify(data));
+  }
+
+  /**
+   * Save a completed study session summary.
+   * @param {string} deckId
+   * @param {{ date, totalCards, masteredFirst, rounds, pct }} session
+   */
+  function saveSession(deckId, session) {
+    const store = getSessionStore();
+    if (!store[deckId]) store[deckId] = [];
+    store[deckId].push(session);
+    // Keep only the most recent sessions
+    if (store[deckId].length > MAX_SESSIONS_PER_DECK) {
+      store[deckId] = store[deckId].slice(-MAX_SESSIONS_PER_DECK);
+    }
+    saveSessionStore(store);
+  }
+
+  /**
+   * Returns all saved sessions for a deck (oldest first).
+   * @param {string} deckId
+   * @returns {Array}
+   */
+  function getSessionHistory(deckId) {
+    const store = getSessionStore();
+    return store[deckId] || [];
+  }
+
   return {
     getApiKey,
     setApiKey,
@@ -199,6 +237,8 @@ const Storage = (() => {
     markStudied,
     updateSm2AfterSession,
     getDeckSm2Stats,
+    saveSession,
+    getSessionHistory,
   };
 })();
 

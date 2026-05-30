@@ -23,14 +23,14 @@ const Quiz = (() => {
    * Start a new quiz session.
    * All cards are shuffled into the first round queue.
    */
-  function start(deck) {
+  function start(deck, shouldShuffle = true) {
     const allCards = [...deck.cards];
     state = {
       deckId: deck.id,
       deckName: deck.name,
       allCards,
       totalCards: allCards.length,
-      queue: shuffle([...allCards]),  // cards for the current round
+      queue: shouldShuffle ? shuffle([...allCards]) : [...allCards],
       wrongThisRound: [],              // cards answered wrong this round → next round queue
       currentIndex: 0,
       round: 1,

@@ -10,6 +10,8 @@
   let generatedCards = [];
   let pendingDeckName = '';
   let currentQuizDeckId = null;
+  let currentStatsDeckId = null;
+  let pendingExplainCard = null;   // card saved before markWrong() advances the index
   let lastSavedDeckId = null;
   let renamingDeckId = null;
   let deletingDeckId = null;
@@ -50,7 +52,7 @@
   }
 
   // ===== View Routing =====
-  const views = ['home', 'settings', 'generate', 'decks', 'quiz'];
+  const views = ['home', 'settings', 'generate', 'decks', 'quiz', 'stats'];
 
   function showView(name) {
     views.forEach(v => {
@@ -439,6 +441,9 @@
     grid.querySelectorAll('[data-deck-study]').forEach(btn => {
       btn.addEventListener('click', () => startQuiz(btn.dataset.deckStudy));
     });
+    grid.querySelectorAll('[data-deck-stats]').forEach(btn => {
+      btn.addEventListener('click', () => showStats(btn.dataset.deckStats));
+    });
     grid.querySelectorAll('[data-deck-rename]').forEach(btn => {
       btn.addEventListener('click', () => openRenameModal(btn.dataset.deckRename));
     });
@@ -480,6 +485,9 @@
             Studia
           </button>
           <div class="deck-card-icon-actions">
+            <button class="btn-icon" data-deck-stats="${escapeHtml(deck.id)}" title="Statistiche">
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            </button>
             <button class="btn-icon" data-deck-rename="${escapeHtml(deck.id)}" title="Rinomina">
               <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             </button>
@@ -534,6 +542,9 @@
 
     grid.querySelectorAll('[data-deck-study]').forEach(btn => {
       btn.addEventListener('click', () => startQuiz(btn.dataset.deckStudy));
+    });
+    grid.querySelectorAll('[data-deck-stats]').forEach(btn => {
+      btn.addEventListener('click', () => showStats(btn.dataset.deckStats));
     });
     grid.querySelectorAll('[data-deck-rename]').forEach(btn => {
       btn.addEventListener('click', () => openRenameModal(btn.dataset.deckRename));
@@ -637,8 +648,22 @@
     }
 
     currentQuizDeckId = deckId;
-    Quiz.start(deck);
+
+    // Populate start panel and show it
+    $('quiz-start-deck-name').textContent = deck.name;
+    $('quiz-start-card-count').textContent = deck.cards.length;
+    show($('quiz-start'));
+    hide($('quiz-game'));
     showView('quiz');
+  }
+
+  function beginQuiz() {
+    const deck = Storage.getDeck(currentQuizDeckId);
+    if (!deck) return;
+    const shouldShuffle = $('quiz-shuffle-toggle').checked;
+    Quiz.start(deck, shouldShuffle);
+    hide($('quiz-start'));
+    show($('quiz-game'));
     renderQuizCard();
   }
 
@@ -668,8 +693,10 @@
     show($('flashcard-wrap'));
     show($('quiz-btn-reveal-wrap'));
     hide($('quiz-btn-eval-wrap'));
+    hide($('quiz-explain-wrap'));
     hide($('quiz-round-end'));
     hide($('quiz-summary'));
+    pendingExplainCard = null;
   }
 
   function revealAnswer() {
@@ -708,6 +735,17 @@
   }
 
   function showFinalSummary(results) {
+    // Persist session for statistics
+    Storage.saveSession(results.deckId, {
+      date: new Date().toISOString(),
+      totalCards: results.totalCards,
+      masteredFirst: results.masteredFirst,
+      rounds: results.rounds,
+      pct: results.totalCards > 0
+        ? Math.round((results.masteredFirst / results.totalCards) * 100)
+        : 0,
+    });
+
     hide($('flashcard-wrap'));
     hide($('quiz-btn-reveal-wrap'));
     hide($('quiz-btn-eval-wrap'));
@@ -749,7 +787,48 @@
     show($('quiz-summary'));
   }
 
+  function showExplainPrompt() {
+    hide($('quiz-btn-eval-wrap'));
+    // Reset explain panel state
+    show($('quiz-explain-btn'));
+    hide($('quiz-explain-loading'));
+    hide($('quiz-explain-box'));
+    $('quiz-explain-text').textContent = '';
+    show($('quiz-explain-wrap'));
+  }
+
   function initQuiz() {
+    $('quiz-start-btn').addEventListener('click', beginQuiz);
+    $('quiz-start-back-btn').addEventListener('click', () => showView('decks'));
+
+    // Explain panel
+    $('quiz-explain-btn').addEventListener('click', async () => {
+      const card = pendingExplainCard;
+      if (!card) return;
+
+      hide($('quiz-explain-btn'));
+      show($('quiz-explain-loading'));
+
+      try {
+        const apiKey = Storage.getApiKey();
+        const model = Storage.getModel();
+        const text = await GroqApi.explainCard(card.domanda, card.risposta, apiKey, model);
+        $('quiz-explain-text').textContent = text;
+        show($('quiz-explain-box'));
+      } catch (err) {
+        $('quiz-explain-text').textContent = `Errore: ${err.message}`;
+        show($('quiz-explain-box'));
+      } finally {
+        hide($('quiz-explain-loading'));
+      }
+    });
+
+    $('quiz-explain-next-btn').addEventListener('click', () => {
+      pendingExplainCard = null;
+      hide($('quiz-explain-wrap'));
+      handleQuizAdvance();
+    });
+
     $('quiz-reveal-btn').addEventListener('click', revealAnswer);
 
     $('quiz-knew-btn').addEventListener('click', () => {
@@ -758,8 +837,9 @@
     });
 
     $('quiz-didnt-btn').addEventListener('click', () => {
+      pendingExplainCard = Quiz.getCurrentCard();  // save before index advances
       Quiz.markWrong();
-      handleQuizAdvance();
+      showExplainPrompt();
     });
 
     $('quiz-next-round-btn').addEventListener('click', () => {
@@ -773,7 +853,11 @@
     });
 
     $('quiz-retry-btn').addEventListener('click', () => {
-      if (currentQuizDeckId) startQuiz(currentQuizDeckId);
+      if (currentQuizDeckId) {
+        hide($('quiz-game'));
+        hide($('quiz-summary'));
+        show($('quiz-start'));
+      }
     });
 
     // Keyboard shortcuts (only active when quiz view is visible)
@@ -794,10 +878,109 @@
         handleQuizAdvance();
       } else if (e.key === 'ArrowLeft' && answerRevealed) {
         e.preventDefault();
+        pendingExplainCard = Quiz.getCurrentCard();
         Quiz.markWrong();
-        handleQuizAdvance();
+        showExplainPrompt();
       }
     });
+  }
+
+  // ===== Stats =====
+  function showStats(deckId) {
+    const deck = Storage.getDeck(deckId);
+    if (!deck) return;
+    currentStatsDeckId = deckId;
+
+    const sm2 = Storage.getDeckSm2Stats(deck);
+    const sessions = Storage.getSessionHistory(deckId);
+
+    // Header
+    $('stats-deck-name').textContent = deck.name;
+
+    // Summary tiles
+    $('stats-total').textContent = deck.cards.length;
+    $('stats-mastered').textContent = sm2.masteredCount;
+    $('stats-due').textContent = sm2.dueCount;
+    $('stats-sessions-count').textContent = sessions.length;
+
+    // Last session
+    if (sessions.length > 0) {
+      const last = sessions[sessions.length - 1];
+      $('stats-last-pct').textContent = `${last.pct}%`;
+      const dateStr = new Date(last.date).toLocaleDateString('it-IT', {
+        day: '2-digit', month: 'long', year: 'numeric',
+      });
+      $('stats-last-meta').textContent =
+        `${last.masteredFirst} di ${last.totalCards} al primo tentativo · ${dateStr}`;
+    } else {
+      $('stats-last-pct').textContent = '—';
+      $('stats-last-meta').textContent = 'Nessuna sessione ancora';
+    }
+
+    // Chart
+    const chartBars = $('stats-chart-bars');
+    const chartDates = $('stats-chart-dates');
+    const chartEmpty = $('stats-chart-empty');
+    const chartWrap = $('stats-chart-wrap');
+
+    if (sessions.length === 0) {
+      show(chartEmpty);
+      hide(chartWrap);
+    } else {
+      hide(chartEmpty);
+      show(chartWrap);
+      renderStatsChart(sessions.slice(-7), chartBars, chartDates);
+    }
+
+    showView('stats');
+  }
+
+  function renderStatsChart(sessions, barsEl, datesEl) {
+    const CHART_H = 100; // px — must match CSS .stats-chart-area height
+
+    barsEl.innerHTML = '';
+    datesEl.innerHTML = '';
+
+    const maxPct = Math.max(...sessions.map(s => s.pct), 1);
+
+    sessions.forEach(session => {
+      // Bar column
+      const col = document.createElement('div');
+      col.className = 'chart-col';
+
+      const pctLabel = document.createElement('div');
+      pctLabel.className = 'chart-pct-val';
+      pctLabel.textContent = `${session.pct}%`;
+
+      const bar = document.createElement('div');
+      bar.className = 'chart-bar';
+      // Scale bar height relative to max in this set (more readable than absolute %)
+      const barH = Math.max(3, Math.round((session.pct / maxPct) * CHART_H));
+      bar.style.height = `${barH}px`;
+      // Color by performance
+      bar.style.background = session.pct >= 80
+        ? 'var(--success)'
+        : session.pct >= 50
+          ? 'var(--warning)'
+          : 'var(--danger)';
+      bar.title = `${session.pct}%`;
+
+      col.appendChild(pctLabel);
+      col.appendChild(bar);
+      barsEl.appendChild(col);
+
+      // Date label (separate row)
+      const dateEl = document.createElement('div');
+      dateEl.className = 'chart-date-label';
+      dateEl.textContent = new Date(session.date).toLocaleDateString('it-IT', {
+        day: '2-digit', month: 'short',
+      });
+      datesEl.appendChild(dateEl);
+    });
+  }
+
+  function initStats() {
+    $('stats-back-btn').addEventListener('click', () => showView('decks'));
   }
 
   // ===== Global nav delegation =====
@@ -816,6 +999,7 @@
     initGenerateView();
     initModals();
     initQuiz();
+    initStats();
 
     // Start on home view (or settings if no key)
     if (!Storage.hasApiKey()) {
