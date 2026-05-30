@@ -855,43 +855,34 @@ img, svg { display: block; }
   color: var(--danger);
 }
 
-/* ===== Flashcard Preview List ===== */
+/* ===== Flashcard Preview List (static) ===== */
 .flashcard-preview-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-/* Interactive preview cards — click to reveal answer */
-.preview-card {
+.preview-static-item {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
+  overflow: hidden;
   cursor: pointer;
   outline: none;
-  transition: border-color var(--transition), box-shadow var(--transition);
-  overflow: hidden;
-  user-select: none;
+  transition: border-color var(--transition);
 }
 
-.preview-card:hover {
-  border-color: var(--border-hover);
-}
+.preview-static-item:hover { border-color: var(--border-hover); }
+.preview-static-item:focus-visible { box-shadow: 0 0 0 3px var(--accent-glow); border-color: var(--accent); }
+.preview-static-item.revealed { border-color: var(--accent); }
 
-.preview-card:focus-visible {
-  box-shadow: 0 0 0 3px var(--accent-glow);
-  border-color: var(--accent);
-}
-
-.preview-card.revealed {
-  border-color: var(--accent);
-}
-
-.preview-card-q {
-  padding: 13px 14px;
+.preview-static-q {
+  padding: 12px 14px;
   display: flex;
   align-items: flex-start;
   gap: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
 .preview-num {
@@ -909,54 +900,199 @@ img, svg { display: block; }
   margin-top: 2px;
 }
 
-.preview-card-qtext {
-  font-size: 0.9rem;
-  font-weight: 600;
-  flex: 1;
-  line-height: 1.45;
-}
-
-.preview-chevron {
+.preview-static-chevron {
   flex-shrink: 0;
+  margin-left: auto;
+  margin-top: 3px;
   color: var(--text-disabled);
-  margin-top: 2px;
-  transition: transform 0.25s ease, color var(--transition);
+  transition: transform 0.2s ease, color var(--transition);
 }
 
-.preview-card.revealed .preview-chevron {
+.preview-static-item.revealed .preview-static-chevron {
   transform: rotate(180deg);
   color: var(--accent-hover);
 }
 
-/* Answer panel — hidden by default, shown on .revealed */
-.preview-card-a {
+/* Answer hidden by default, shown on .revealed */
+.preview-static-a {
   display: none;
-  padding: 12px 14px 13px 44px;
-  border-top: 1px solid var(--border);
-  background: rgba(16, 185, 129, 0.06);
+  padding: 10px 14px 12px 44px;
   font-size: 0.875rem;
+  color: var(--text-muted);
   line-height: 1.5;
-  color: var(--text);
+  border-top: 1px solid var(--border);
+  background: rgba(16, 185, 129, 0.05);
 }
 
-.preview-card.revealed .preview-card-a {
-  display: block;
-}
+.preview-static-item.revealed .preview-static-a { display: block; }
 
-.preview-badge-a {
-  display: block;
+.preview-static-a-label {
   font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--success);
-  margin-bottom: 5px;
+  margin-right: 6px;
+}
+
+/* ===== Deck SM-2 Stats ===== */
+.deck-sm2-stats {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.sm2-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sm2-badge--due {
+  background: var(--warning-light);
+  color: var(--warning);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.sm2-badge--mastered {
+  background: var(--success-light);
+  color: var(--success);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.sm2-badge--all-mastered {
+  background: var(--success-light);
+  color: var(--success);
+  border: 1px solid rgba(16, 185, 129, 0.25);
 }
 
 /* ===== Save Deck Card ===== */
 .save-deck-card {
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent-glow);
+}
+
+/* ===== Post-save success panel ===== */
+.save-success {
+  background: var(--surface);
+  border: 1px solid var(--success);
+  border-radius: var(--radius-lg);
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.15), var(--shadow-md);
+}
+
+.save-success[hidden] { display: none !important; }
+
+.save-success-check {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: var(--success-light);
+  border: 2px solid var(--success);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--success);
+}
+
+.save-success-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.save-success-name {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-top: -8px;
+}
+
+.save-success-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 320px;
+}
+
+/* ===== Round-end card ===== */
+.quiz-round-end {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.quiz-round-end[hidden] { display: none !important; }
+
+.round-end-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 40px 28px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  box-shadow: var(--shadow-md);
+  width: 100%;
+}
+
+.round-end-emoji {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.round-end-card h3 {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.round-end-desc {
+  font-size: 1rem;
+  color: var(--text-muted);
+}
+
+.round-end-desc strong {
+  color: var(--danger);
+}
+
+.round-end-mastered {
+  font-size: 0.875rem;
+  color: var(--text-disabled);
+}
+
+/* ===== Keyboard hint ===== */
+.quiz-keyboard-hint {
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-disabled);
+  margin-top: 10px;
+}
+
+.quiz-keyboard-hint kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+/* Hide keyboard hint on touch-only devices */
+@media (hover: none) and (pointer: coarse) {
+  .quiz-keyboard-hint { display: none; }
 }
 
 /* ===== Quiz ===== */
@@ -1177,6 +1313,29 @@ img, svg { display: block; }
   background: var(--danger-light);
   color: var(--danger);
   border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.stat-chip--info {
+  background: var(--cyan-light);
+  color: var(--cyan);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+}
+
+/* ===== Summary SM-2 info badge ===== */
+.summary-sm2-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--accent-light);
+  border: 1px solid rgba(124, 58, 237, 0.2);
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  color: var(--accent-hover);
+  max-width: 380px;
+  width: 100%;
+  text-align: left;
+  line-height: 1.4;
 }
 
 .summary-wrong-title {

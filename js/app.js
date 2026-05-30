@@ -10,6 +10,7 @@
   let generatedCards = [];
   let pendingDeckName = '';
   let currentQuizDeckId = null;
+  let lastSavedDeckId = null;
   let renamingDeckId = null;
   let deletingDeckId = null;
 
@@ -243,6 +244,9 @@
     hide($('gen-preview'));
     hide($('truncate-warning'));
     hide($('gen-error'));
+    // Reset post-save state if re-generating
+    hide($('save-success'));
+    show($('save-deck-card'));
 
     let extractedText = '';
     let truncated = false;
@@ -339,28 +343,25 @@
     const list = $('gen-flashcard-list');
     $('gen-count').textContent = generatedCards.length;
     list.innerHTML = generatedCards.map((c, i) => `
-      <div class="preview-card" role="button" tabindex="0" aria-expanded="false">
-        <div class="preview-card-q">
+      <div class="preview-static-item" role="button" tabindex="0" aria-expanded="false">
+        <div class="preview-static-q">
           <span class="preview-num">${i + 1}</span>
-          <span class="preview-card-qtext">${escapeHtml(c.domanda)}</span>
-          <svg class="preview-chevron" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="6,9 12,15 18,9"/></svg>
+          <span>${escapeHtml(c.domanda)}</span>
+          <svg class="preview-static-chevron" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="6,9 12,15 18,9"/></svg>
         </div>
-        <div class="preview-card-a" aria-hidden="true">
-          <span class="preview-badge-a">Risposta</span>
-          <span>${escapeHtml(c.risposta)}</span>
+        <div class="preview-static-a">
+          <span class="preview-static-a-label">R</span>${escapeHtml(c.risposta)}
         </div>
       </div>
     `).join('');
 
-    list.querySelectorAll('.preview-card').forEach(card => {
-      function toggle() {
-        const revealed = card.classList.toggle('revealed');
-        card.setAttribute('aria-expanded', String(revealed));
-        card.querySelector('.preview-card-a').setAttribute('aria-hidden', String(!revealed));
-      }
-      card.addEventListener('click', toggle);
+    list.querySelectorAll('.preview-static-item').forEach(card => {
+      card.addEventListener('click', () => {
+        const open = card.classList.toggle('revealed');
+        card.setAttribute('aria-expanded', String(open));
+      });
       card.addEventListener('keydown', e => {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); card.click(); }
       });
     });
   }
@@ -381,6 +382,10 @@
     $('deck-name-input').addEventListener('keydown', e => {
       if (e.key === 'Enter') saveDeck();
     });
+
+    $('study-now-btn').addEventListener('click', () => {
+      if (lastSavedDeckId) startQuiz(lastSavedDeckId);
+    });
   }
 
   function saveDeck() {
@@ -397,16 +402,17 @@
 
     const deck = Storage.createDeck(name, generatedCards);
     Storage.saveDeck(deck);
+    lastSavedDeckId = deck.id;
 
-    toast(`Mazzo "${name}" salvato!`, 'success');
-
-    // Reset state
+    // Reset upload state
     selectedFile = null;
     generatedCards = [];
     if ($('file-input')) $('file-input').value = '';
 
-    // Go to decks view
-    showView('decks');
+    // Show success panel in place of the save form
+    hide($('save-deck-card'));
+    $('save-success-name').textContent = name;
+    show($('save-success'));
   }
 
   // ===== Decks Page =====
@@ -450,6 +456,9 @@
       ? new Date(deck.studiedAt).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })
       : null;
 
+    const sm2 = Storage.getDeckSm2Stats(deck);
+    const sm2Html = renderSm2Badges(sm2, cardCount);
+
     return `
       <div class="deck-card">
         <div class="deck-card-name" title="${escapeHtml(deck.name)}">${escapeHtml(deck.name)}</div>
@@ -464,6 +473,7 @@
           </span>
           ${studied ? `<span title="Ultima sessione">✓ ${studied}</span>` : ''}
         </div>
+        ${sm2Html}
         <div class="deck-card-actions">
           <button class="btn btn-primary btn-sm" data-deck-study="${escapeHtml(deck.id)}">
             <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polygon points="5,3 19,12 5,21"/></svg>
@@ -480,6 +490,33 @@
         </div>
       </div>
     `;
+  }
+
+  function renderSm2Badges({ dueCount, masteredCount }, totalCards) {
+    if (masteredCount === 0 && dueCount === 0) return '';
+
+    const badges = [];
+
+    if (dueCount > 0) {
+      badges.push(`
+        <span class="sm2-badge sm2-badge--due">
+          <svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          ${dueCount} da rivedere oggi
+        </span>
+      `);
+    }
+
+    if (masteredCount > 0) {
+      const allMastered = masteredCount >= totalCards;
+      badges.push(`
+        <span class="sm2-badge ${allMastered ? 'sm2-badge--all-mastered' : 'sm2-badge--mastered'}">
+          <svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="20,6 9,17 4,12"/></svg>
+          ${allMastered ? 'Tutto padroneggiato!' : `${masteredCount} padroneggiate`}
+        </span>
+      `);
+    }
+
+    return `<div class="deck-sm2-stats">${badges.join('')}</div>`;
   }
 
   function renderRecentDecks() {
@@ -608,36 +645,31 @@
   function renderQuizCard() {
     const card = Quiz.getCurrentCard();
     const progress = Quiz.getProgress();
-    const score = Quiz.getScore();
-    const isFinished = Quiz.isFinished();
-
-    if (isFinished) {
-      showQuizSummary();
-      return;
-    }
 
     // Update header
     $('quiz-deck-name').textContent = Storage.getDeck(currentQuizDeckId)?.name || '';
-    $('quiz-progress-label').textContent = `${progress.current} / ${progress.total}`;
-    $('quiz-score-text').textContent = score;
+    $('quiz-score-text').textContent = progress.masteredCount;
 
-    // Update progress bar
+    // Progress label: show round when > 1
+    if (progress.round > 1) {
+      $('quiz-progress-label').textContent = `Giro ${progress.round} — ${progress.current} / ${progress.total}`;
+    } else {
+      $('quiz-progress-label').textContent = `${progress.current} / ${progress.total}`;
+    }
+
     $('quiz-progress-bar').style.width = `${progress.percent}%`;
 
-    // Set card content
+    // Set card content and reset flip
     $('flashcard-question').textContent = card.domanda;
     $('flashcard-answer').textContent = card.risposta;
+    $('flashcard').classList.remove('flipped');
 
-    // Reset flip
-    const flashcard = $('flashcard');
-    flashcard.classList.remove('flipped');
-
-    // Show reveal button, hide eval buttons
+    // Show question controls, hide everything else
+    show($('flashcard-wrap'));
     show($('quiz-btn-reveal-wrap'));
     hide($('quiz-btn-eval-wrap'));
-
+    hide($('quiz-round-end'));
     hide($('quiz-summary'));
-    show($('flashcard-wrap'));
   }
 
   function revealAnswer() {
@@ -646,41 +678,72 @@
     show($('quiz-btn-eval-wrap'));
   }
 
-  function showQuizSummary() {
-    const results = Quiz.getResults();
-    if (!results) return;
+  // Called after every markCorrect/markWrong to decide what to show next
+  function handleQuizAdvance() {
+    if (Quiz.isSessionDone()) {
+      const results = Quiz.getSessionResults();
+      Storage.updateSm2AfterSession(results.deckId, results.cardQualities);
+      Storage.markStudied(results.deckId);
+      showFinalSummary(results);
+    } else if (Quiz.isRoundDone()) {
+      showRoundEnd(Quiz.getRoundSummary());
+    } else {
+      renderQuizCard();
+    }
+  }
 
-    Storage.markStudied(results.deckId);
-
+  function showRoundEnd(summary) {
     hide($('flashcard-wrap'));
     hide($('quiz-btn-reveal-wrap'));
     hide($('quiz-btn-eval-wrap'));
+    hide($('quiz-summary'));
 
-    // Update score circle with conic gradient
-    const pct = results.percent;
+    $('round-end-num').textContent = summary.round;
+    $('round-end-wrong-count').textContent = summary.wrongCount;
+    $('round-end-mastered-count').textContent = summary.masteredCount;
+    $('round-end-total').textContent = summary.totalCards;
+    $('round-end-next-num').textContent = summary.round + 1;
+
+    show($('quiz-round-end'));
+  }
+
+  function showFinalSummary(results) {
+    hide($('flashcard-wrap'));
+    hide($('quiz-btn-reveal-wrap'));
+    hide($('quiz-btn-eval-wrap'));
+    hide($('quiz-round-end'));
+
+    // Score circle: % mastered in round 1 (perfect recall rate)
+    const pct = results.totalCards > 0
+      ? Math.round((results.masteredFirst / results.totalCards) * 100)
+      : 100;
     const color = pct >= 80 ? 'var(--success)' : pct >= 50 ? 'var(--warning)' : 'var(--danger)';
     const deg = Math.round((pct / 100) * 360);
     $('summary-score-circle').style.background =
       `conic-gradient(${color} ${deg}deg, var(--surface-2) ${deg}deg)`;
     $('summary-percent').textContent = `${pct}%`;
+    $('summary-circle-label').textContent = 'al primo giro';
 
-    $('summary-knew').textContent = results.knew;
-    $('summary-didnt').textContent = results.didnt;
+    // Stat chips
+    $('summary-knew').textContent = results.masteredFirst;
+    $('summary-knew-label').textContent = ' al primo giro';
+    $('summary-didnt').textContent = results.rounds;
+    $('summary-didnt-label').textContent = results.rounds === 1 ? ' giro' : ' giri';
 
-    // Wrong answers list
-    const wrongSection = $('summary-wrong-section');
-    const wrongList = $('summary-wrong-list');
-    if (results.wrong.length > 0) {
-      wrongList.innerHTML = results.wrong.map(c => `
+    // Cards that needed multiple rounds
+    const multiSection = $('summary-multi-round-section');
+    const multiList = $('summary-multi-round-list');
+    if (results.multiRoundCards.length > 0) {
+      multiList.innerHTML = results.multiRoundCards.map(c => `
         <div class="summary-wrong-item">
           <div class="summary-wrong-item-q">${escapeHtml(c.domanda)}</div>
           <div class="summary-wrong-item-a">${escapeHtml(c.risposta)}</div>
         </div>
       `).join('');
-      show(wrongSection);
+      show(multiSection);
     } else {
-      wrongList.innerHTML = '';
-      hide(wrongSection);
+      multiList.innerHTML = '';
+      hide(multiSection);
     }
 
     show($('quiz-summary'));
@@ -691,11 +754,16 @@
 
     $('quiz-knew-btn').addEventListener('click', () => {
       Quiz.markCorrect();
-      renderQuizCard();
+      handleQuizAdvance();
     });
 
     $('quiz-didnt-btn').addEventListener('click', () => {
       Quiz.markWrong();
+      handleQuizAdvance();
+    });
+
+    $('quiz-next-round-btn').addEventListener('click', () => {
+      Quiz.startNextRound();
       renderQuizCard();
     });
 
@@ -706,6 +774,29 @@
 
     $('quiz-retry-btn').addEventListener('click', () => {
       if (currentQuizDeckId) startQuiz(currentQuizDeckId);
+    });
+
+    // Keyboard shortcuts (only active when quiz view is visible)
+    document.addEventListener('keydown', e => {
+      if ($('view-quiz').hidden) return;
+      if (!$('quiz-summary').hidden || !$('quiz-round-end').hidden) return;
+      // Don't steal keys from inputs
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
+
+      const answerRevealed = !$('quiz-btn-eval-wrap').hidden;
+
+      if ((e.key === ' ' || e.code === 'Space') && !answerRevealed) {
+        e.preventDefault();
+        revealAnswer();
+      } else if (e.key === 'ArrowRight' && answerRevealed) {
+        e.preventDefault();
+        Quiz.markCorrect();
+        handleQuizAdvance();
+      } else if (e.key === 'ArrowLeft' && answerRevealed) {
+        e.preventDefault();
+        Quiz.markWrong();
+        handleQuizAdvance();
+      }
     });
   }
 
