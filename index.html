@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bishcard — Flashcard dal PDF</title>
+  <meta name="description" content="Genera flashcard dai tuoi PDF con l'intelligenza artificiale. Studia più veloce.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="header-inner">
+        <button class="logo" data-view="home">
+          <span class="logo-icon">⚡</span>
+          <span class="logo-text">Bishcard</span>
+        </button>
+        <nav class="nav">
+          <button class="nav-btn" data-view="home">
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+            Home
+          </button>
+          <button class="nav-btn" data-view="decks">
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            I miei mazzi
+          </button>
+          <button class="nav-btn icon-btn" data-view="settings" title="Impostazioni API">
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+            <span class="api-key-badge" id="api-key-badge" hidden></span>
+          </button>
+        </nav>
+      </div>
+    </header>
+
+    <!-- Toast notifications -->
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <!-- Main content -->
+    <main class="main">
+
+      <!-- ========== SETTINGS VIEW ========== -->
+      <section class="view" id="view-settings" hidden>
+        <div class="container container--narrow">
+          <div class="page-header">
+            <h1 class="page-title">Impostazioni</h1>
+            <p class="page-subtitle">Configura la tua API key per usare Bishcard</p>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+              <h2>Groq API Key</h2>
+            </div>
+            <div class="card-body">
+              <p class="text-muted mb-4">
+                La tua API key è salvata solo nel browser (localStorage) e inviata esclusivamente ai server di Groq per generare le flashcard. Non viene mai registrata altrove.
+              </p>
+              <p class="text-muted mb-4">
+                Ottieni la tua chiave gratuita su <strong>console.groq.com</strong>
+              </p>
+
+              <div class="form-group">
+                <label class="form-label" for="api-key-input">API Key</label>
+                <div class="input-wrapper">
+                  <svg class="input-icon" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                  <input
+                    type="password"
+                    id="api-key-input"
+                    class="form-input"
+                    placeholder="gsk_xxxxxxxxxxxxxxxxxxxx"
+                    autocomplete="off"
+                    spellcheck="false"
+                  >
+                  <button class="input-toggle" id="toggle-key-visibility" title="Mostra/nascondi">
+                    <svg id="eye-icon" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                </div>
+              </div>
+
+              <div class="btn-group">
+                <button class="btn btn-primary" id="save-key-btn">
+                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>
+                  Salva chiave
+                </button>
+                <button class="btn btn-ghost btn-danger" id="clear-key-btn">
+                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="3,6 5,6 21,6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                  Rimuovi chiave
+                </button>
+              </div>
+
+              <div id="key-status" class="key-status" hidden></div>
+            </div>
+          </div>
+
+          <div class="card mt-4">
+            <div class="card-header">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <h2>Modello AI</h2>
+            </div>
+            <div class="card-body">
+              <div class="form-group">
+                <label class="form-label" for="model-select">Modello Groq</label>
+                <select class="form-input form-select" id="model-select">
+                  <option value="llama-3.3-70b-versatile">LLaMA 3.3 70B Versatile (consigliato)</option>
+                  <option value="llama3-70b-8192">LLaMA 3 70B</option>
+                  <option value="llama3-8b-8192">LLaMA 3 8B (più veloce)</option>
+                  <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
+                  <option value="gemma2-9b-it">Gemma 2 9B</option>
+                </select>
+              </div>
+              <button class="btn btn-secondary" id="save-model-btn">Salva preferenza</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========== HOME VIEW ========== -->
+      <section class="view" id="view-home">
+        <div class="container">
+          <div class="hero">
+            <h1 class="hero-title">Studia più veloce<br><span class="gradient-text">con le flashcard AI</span></h1>
+            <p class="hero-subtitle">Carica un PDF, l'AI genera automaticamente le domande per te</p>
+          </div>
+
+          <div class="upload-card" id="upload-card">
+            <!-- Step 1: Upload -->
+            <div id="upload-step">
+              <div class="upload-zone" id="upload-zone" role="button" tabindex="0" aria-label="Carica PDF">
+                <div class="upload-zone-inner">
+                  <div class="upload-icon-wrap">
+                    <svg width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg>
+                  </div>
+                  <p class="upload-title">Trascina il PDF qui</p>
+                  <p class="upload-subtitle">oppure <span class="upload-link">clicca per selezionare</span></p>
+                  <p class="upload-hint">File PDF, massimo 50 MB</p>
+                </div>
+                <input type="file" id="file-input" accept=".pdf" hidden aria-label="Seleziona PDF">
+              </div>
+
+              <div class="upload-options">
+                <div class="option-row">
+                  <div class="option-group">
+                    <label class="form-label" for="card-count">Numero di flashcard</label>
+                    <div class="number-spinner">
+                      <button class="spinner-btn" id="count-dec" aria-label="Diminuisci">−</button>
+                      <input type="number" id="card-count" class="spinner-input" value="15" min="5" max="50" aria-label="Numero di flashcard">
+                      <button class="spinner-btn" id="count-inc" aria-label="Aumenta">+</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div id="file-selected-info" class="file-info" hidden>
+                <div class="file-info-inner">
+                  <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+                  <span id="file-name">—</span>
+                  <button class="btn-icon btn-danger-ghost" id="remove-file-btn" title="Rimuovi file">
+                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+              </div>
+
+              <button class="btn btn-primary btn-lg btn-full" id="generate-btn" disabled>
+                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polygon points="13,2 3,14 12,14 11,22 21,10 12,10"/></svg>
+                Genera flashcard
+              </button>
+            </div>
+          </div>
+
+          <!-- Recent decks -->
+          <div id="recent-section" class="recent-section" hidden>
+            <div class="section-header">
+              <h2 class="section-title">Mazzi recenti</h2>
+              <button class="btn btn-ghost btn-sm" data-view="decks">Vedi tutti →</button>
+            </div>
+            <div class="decks-grid" id="recent-decks-grid"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========== GENERATE VIEW ========== -->
+      <section class="view" id="view-generate" hidden>
+        <div class="container container--narrow">
+
+          <!-- Progress steps -->
+          <div class="steps" id="gen-steps">
+            <div class="step active" id="step-extract">
+              <div class="step-dot"></div>
+              <span class="step-label">Estrazione testo</span>
+            </div>
+            <div class="step-line"></div>
+            <div class="step" id="step-generate">
+              <div class="step-dot"></div>
+              <span class="step-label">Generazione AI</span>
+            </div>
+            <div class="step-line"></div>
+            <div class="step" id="step-review">
+              <div class="step-dot"></div>
+              <span class="step-label">Revisione</span>
+            </div>
+          </div>
+
+          <!-- Status card -->
+          <div class="card" id="gen-status-card">
+            <div class="card-body gen-status">
+              <div class="spinner" id="gen-spinner"></div>
+              <p class="gen-status-text" id="gen-status-text">Avvio...</p>
+              <div class="progress-bar-wrap" id="gen-progress-wrap" hidden>
+                <div class="progress-bar" id="gen-progress-bar" style="width:0%"></div>
+              </div>
+              <p class="gen-status-detail" id="gen-status-detail"></p>
+            </div>
+          </div>
+
+          <!-- Warning (text truncated) -->
+          <div class="alert alert-warning" id="truncate-warning" hidden>
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Il PDF è molto lungo: il testo è stato troncato a ~12.000 caratteri per rispettare i limiti dell'API. Alcune informazioni potrebbero essere escluse.
+          </div>
+
+          <!-- Error -->
+          <div class="alert alert-error" id="gen-error" hidden>
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            <span id="gen-error-text"></span>
+          </div>
+
+          <!-- Preview cards -->
+          <div id="gen-preview" hidden>
+            <div class="section-header mt-4">
+              <h2 class="section-title">Flashcard generate (<span id="gen-count">0</span>)</h2>
+              <button class="btn btn-ghost btn-sm" id="regenerate-btn">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="1,4 1,10 7,10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+                Rigenera
+              </button>
+            </div>
+
+            <div class="flashcard-preview-list" id="gen-flashcard-list"></div>
+
+            <!-- Save deck -->
+            <div class="card save-deck-card mt-4">
+              <div class="card-header">
+                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>
+                <h3>Salva mazzo</h3>
+              </div>
+              <div class="card-body">
+                <div class="form-group">
+                  <label class="form-label" for="deck-name-input">Nome del mazzo</label>
+                  <input type="text" id="deck-name-input" class="form-input" placeholder="es. Biologia capitolo 3" maxlength="80">
+                </div>
+                <div class="btn-group">
+                  <button class="btn btn-primary" id="save-deck-btn">
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>
+                    Salva mazzo
+                  </button>
+                  <button class="btn btn-ghost" id="back-home-btn">Annulla</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ========== DECKS VIEW ========== -->
+      <section class="view" id="view-decks" hidden>
+        <div class="container">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title">I miei mazzi</h1>
+              <p class="page-subtitle" id="decks-count-label">Nessun mazzo salvato</p>
+            </div>
+            <button class="btn btn-primary" data-view="home">
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Nuovo mazzo
+            </button>
+          </div>
+
+          <div id="decks-empty" class="empty-state" hidden>
+            <div class="empty-icon">📚</div>
+            <h3>Nessun mazzo ancora</h3>
+            <p>Carica un PDF e genera le tue prime flashcard</p>
+            <button class="btn btn-primary mt-4" data-view="home">Inizia ora</button>
+          </div>
+
+          <div class="decks-grid" id="decks-grid"></div>
+        </div>
+      </section>
+
+      <!-- ========== QUIZ VIEW ========== -->
+      <section class="view" id="view-quiz" hidden>
+        <div class="container container--narrow">
+
+          <!-- Quiz header -->
+          <div class="quiz-header">
+            <button class="btn btn-ghost btn-sm" id="quiz-exit-btn">
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12,19 5,12 12,5"/></svg>
+              Esci
+            </button>
+            <div class="quiz-meta">
+              <span class="quiz-deck-name" id="quiz-deck-name"></span>
+              <span class="quiz-progress-label" id="quiz-progress-label">1 / 15</span>
+            </div>
+            <div class="quiz-score-badge" id="quiz-score-badge">
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/></svg>
+              <span id="quiz-score-text">0</span>
+            </div>
+          </div>
+
+          <!-- Progress bar -->
+          <div class="quiz-progress-wrap">
+            <div class="quiz-progress-bar" id="quiz-progress-bar" style="width:0%"></div>
+          </div>
+
+          <!-- Card -->
+          <div class="flashcard-wrap" id="flashcard-wrap">
+            <div class="flashcard" id="flashcard">
+              <div class="flashcard-inner">
+                <div class="flashcard-front">
+                  <div class="flashcard-badge">Domanda</div>
+                  <p class="flashcard-text" id="flashcard-question"></p>
+                </div>
+                <div class="flashcard-back">
+                  <div class="flashcard-badge flashcard-badge--answer">Risposta</div>
+                  <p class="flashcard-text" id="flashcard-answer"></p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quiz controls -->
+          <div class="quiz-controls">
+            <div id="quiz-btn-reveal-wrap">
+              <button class="btn btn-primary btn-lg btn-full" id="quiz-reveal-btn">
+                Mostra risposta
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+
+            <div id="quiz-btn-eval-wrap" class="quiz-eval-btns" hidden>
+              <button class="btn btn-success btn-lg" id="quiz-knew-btn">
+                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>
+                Lo sapevo
+              </button>
+              <button class="btn btn-danger btn-lg" id="quiz-didnt-btn">
+                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                Non lo sapevo
+              </button>
+            </div>
+          </div>
+
+          <!-- Summary (shown at end) -->
+          <div id="quiz-summary" class="quiz-summary" hidden>
+            <div class="summary-score-circle" id="summary-score-circle">
+              <div class="summary-percent" id="summary-percent">0%</div>
+              <div class="summary-label">corretto</div>
+            </div>
+
+            <div class="summary-stats">
+              <div class="stat-chip stat-chip--success">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="20,6 9,17 4,12"/></svg>
+                <span id="summary-knew">0</span> sapevo
+              </div>
+              <div class="stat-chip stat-chip--danger">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                <span id="summary-didnt">0</span> da rivedere
+              </div>
+            </div>
+
+            <div id="summary-wrong-section" hidden>
+              <h3 class="summary-wrong-title">Da rivedere</h3>
+              <div class="summary-wrong-list" id="summary-wrong-list"></div>
+            </div>
+
+            <div class="summary-actions">
+              <button class="btn btn-primary btn-lg" id="quiz-retry-btn">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="1,4 1,10 7,10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+                Riprova
+              </button>
+              <button class="btn btn-ghost btn-lg" data-view="decks">Torna ai mazzi</button>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Rename modal -->
+  <div class="modal-overlay" id="rename-modal" hidden>
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Rinomina mazzo</h3>
+        <button class="btn-icon" id="rename-modal-close">
+          <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="rename-input" class="form-input" placeholder="Nuovo nome" maxlength="80">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" id="rename-confirm-btn">Rinomina</button>
+        <button class="btn btn-ghost" id="rename-cancel-btn">Annulla</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete modal -->
+  <div class="modal-overlay" id="delete-modal" hidden>
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Elimina mazzo</h3>
+        <button class="btn-icon" id="delete-modal-close">
+          <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p>Sei sicuro di voler eliminare <strong id="delete-deck-name"></strong>? Questa azione non può essere annullata.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-danger" id="delete-confirm-btn">Elimina</button>
+        <button class="btn btn-ghost" id="delete-cancel-btn">Annulla</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PDF.js via CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+  <!-- App modules (order matters) -->
+  <script src="js/storage.js"></script>
+  <script src="js/pdfExtractor.js"></script>
+  <script src="js/groqApi.js"></script>
+  <script src="js/quiz.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
