@@ -29,8 +29,19 @@ const Storage = (() => {
     return !!localStorage.getItem(KEYS.API_KEY);
   }
 
+  const DEPRECATED_MODELS = [
+    'llama-3.3-70b-versatile',
+    'llama3-70b-8192',
+    'llama3-8b-8192',
+    'mixtral-8x7b-32768',
+    'gemma2-9b-it',
+    'llama-3.1-8b-instant',
+  ];
+
   function getModel() {
-    return localStorage.getItem(KEYS.MODEL) || 'llama-3.3-70b-versatile';
+    const saved = localStorage.getItem(KEYS.MODEL);
+    if (!saved || DEPRECATED_MODELS.includes(saved)) return 'openai/gpt-oss-120b';
+    return saved;
   }
 
   function setModel(model) {

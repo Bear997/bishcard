@@ -80,7 +80,7 @@ ${text}`;
     if (!apiKey) throw new Error('API key mancante. Vai nelle impostazioni per inserirla.');
 
     const body = {
-      model: model || 'llama-3.3-70b-versatile',
+      model: model || 'openai/gpt-oss-120b',
       messages: [
         {
           role: 'system',
@@ -167,7 +167,7 @@ ${text}`;
           'Authorization': `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: model || 'llama-3.3-70b-versatile',
+          model: model || 'openai/gpt-oss-120b',
           messages: [{ role: 'user', content: prompt }],
           temperature: 0.5,
           max_tokens: 512,
